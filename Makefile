@@ -10,7 +10,8 @@ release:
 
 install:
 	cargo install --path .
-	@echo "Installed $(BINARY_NAME) via cargo install"
+	cargo clean
+	@echo "Installed $(BINARY_NAME) via cargo install and cleaned artifacts"
 
 uninstall:
 	cargo uninstall $(BINARY_NAME)
