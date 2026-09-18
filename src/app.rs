@@ -1,5 +1,5 @@
 use crate::api::fetch_quotes;
-use crate::config::{save_config, Config, ThemeColors, WatchItem};
+use crate::config::{load_portfolio, save_config, Config, Portfolio, ThemeColors, WatchItem};
 use crate::model::{AppState, GroupView, Quote};
 use crate::ui::draw;
 use color_eyre::Result;
@@ -13,9 +13,13 @@ use tokio::sync::mpsc;
 pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeColors) -> Result<()> {
     let refresh_interval = Duration::from_secs(config.refresh_interval_secs);
 
+    // Load portfolio and build watchlist from it
+    let portfolio = load_portfolio()?.unwrap_or_default();
+    let watchlist = build_watchlist_from_portfolio(&portfolio, &config.watchlist);
+
     // Initial fetch
-    let quotes = fetch_initial_quotes(&config.watchlist).await?;
-    let groups = build_groups(&config.watchlist, quotes);
+    let quotes = fetch_initial_quotes(&watchlist).await?;
+    let groups = build_groups(&watchlist, quotes);
     let mut state = AppState::new(groups, config.theme.clone(), config.refresh_interval_secs);
 
     let mut current_theme = theme;
@@ -41,6 +45,11 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     // Skip the first immediate tick
     tick_interval.tick().await;
 
+    // Helper to refresh quotes using the portfolio watchlist
+    let refresh_quotes = async |watchlist: &[WatchItem]| -> Result<Vec<Quote>> {
+        fetch_initial_quotes(watchlist).await
+    };
+
     loop {
         terminal.draw(|frame| draw(frame, &state, &current_theme))?;
 
@@ -56,8 +65,8 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                             KeyCode::Char('r') => {
                                 state.loading = true;
                                 terminal.draw(|frame| draw(frame, &state, &current_theme))?;
-                                if let Ok(quotes) = fetch_initial_quotes(&config.watchlist).await {
-                                    let groups = build_groups(&config.watchlist, quotes);
+                                if let Ok(quotes) = refresh_quotes(&watchlist).await {
+                                    let groups = build_groups(&watchlist, quotes);
                                     state.groups = groups;
                                     state.last_update = chrono::Local::now();
                                 }
@@ -80,8 +89,8 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
             _ = tick_interval.tick() => {
                 state.loading = true;
                 terminal.draw(|frame| draw(frame, &state, &current_theme))?;
-                if let Ok(quotes) = fetch_initial_quotes(&config.watchlist).await {
-                    let groups = build_groups(&config.watchlist, quotes);
+                if let Ok(quotes) = refresh_quotes(&watchlist).await {
+                    let groups = build_groups(&watchlist, quotes);
                     state.groups = groups;
                     state.last_update = chrono::Local::now();
                 }
@@ -127,4 +136,33 @@ fn build_groups(watchlist: &[WatchItem], quotes: Vec<Quote>) -> Vec<GroupView> {
             items: group_items.remove(&group).unwrap_or_default(),
         })
         .collect()
+}
+
+fn build_watchlist_from_portfolio(portfolio: &Portfolio, fallback_watchlist: &[WatchItem]) -> Vec<WatchItem> {
+    let mut watchlist = Vec::new();
+    
+    // If portfolio has groups, use them
+    if !portfolio.groups.is_empty() {
+        for group in &portfolio.groups {
+            for code in &group.code {
+                // Try to find name from fallback watchlist
+                let name = fallback_watchlist
+                    .iter()
+                    .find(|w| w.code == *code)
+                    .map(|w| w.name.clone())
+                    .unwrap_or_else(|| code.clone());
+                
+                watchlist.push(WatchItem {
+                    code: code.clone(),
+                    name,
+                    group: group.group_name.clone(),
+                });
+            }
+        }
+    } else {
+        // Fallback to config watchlist
+        watchlist = fallback_watchlist.to_vec();
+    }
+    
+    watchlist
 }

@@ -13,6 +13,18 @@ pub struct WatchItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGroup {
+    #[serde(rename = "groupName")]
+    pub group_name: String,
+    pub code: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Portfolio {
+    pub groups: Vec<PortfolioGroup>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub watchlist: Vec<WatchItem>,
     pub theme: String,
@@ -22,23 +34,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            watchlist: vec![
-                WatchItem {
-                    code: "2330".into(),
-                    name: "台積電".into(),
-                    group: "核心".into(),
-                },
-                WatchItem {
-                    code: "2317".into(),
-                    name: "鴻海".into(),
-                    group: "核心".into(),
-                },
-                WatchItem {
-                    code: "0050".into(),
-                    name: "元大台灣50".into(),
-                    group: "ETF".into(),
-                },
-            ],
+            watchlist: vec![],
             theme: "dark".into(),
             refresh_interval_secs: 60,
         }
@@ -147,6 +143,34 @@ fn config_file_path() -> color_eyre::Result<PathBuf> {
     fs::create_dir_all(&path)?;
     path.push("config.json");
     Ok(path)
+}
+
+fn portfolio_file_path() -> color_eyre::Result<PathBuf> {
+    let mut path = config_dir().ok_or_else(|| color_eyre::eyre::eyre!("No config dir"))?;
+    path.push("ratatui-quote");
+    fs::create_dir_all(&path)?;
+    path.push("portfolio.json");
+    Ok(path)
+}
+
+pub fn load_portfolio() -> color_eyre::Result<Option<Portfolio>> {
+    // First check config directory
+    let config_path = portfolio_file_path()?;
+    if config_path.exists() {
+        let content = fs::read_to_string(&config_path)?;
+        let portfolio: Portfolio = serde_json::from_str(&content)?;
+        return Ok(Some(portfolio));
+    }
+
+    // Fallback to current directory
+    let local_path = PathBuf::from("portfolio.json");
+    if local_path.exists() {
+        let content = fs::read_to_string(&local_path)?;
+        let portfolio: Portfolio = serde_json::from_str(&content)?;
+        return Ok(Some(portfolio));
+    }
+
+    Ok(None)
 }
 
 pub fn save_config(config: &Config) -> color_eyre::Result<()> {

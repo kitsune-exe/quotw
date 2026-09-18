@@ -14,15 +14,19 @@ pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(3),    // Title (with borders)
             Constraint::Length(1),    // Tabs
             Constraint::Min(0),       // Table
             Constraint::Length(1),    // Status bar
+            Constraint::Length(2),    // Key hints
         ])
         .split(area);
 
-    draw_tabs(frame, chunks[0], state, theme);
-    draw_table(frame, chunks[1], state, theme);
-    draw_status(frame, chunks[2], state, theme);
+    draw_title(frame, chunks[0], state, theme);
+    draw_tabs(frame, chunks[1], state, theme);
+    draw_table(frame, chunks[2], state, theme);
+    draw_status(frame, chunks[3], state, theme);
+    draw_key_hints(frame, chunks[4], theme);
 }
 
 fn draw_tabs(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
@@ -86,6 +90,53 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         .column_spacing(1);
 
     frame.render_widget(table, area);
+}
+
+fn draw_title(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
+    let group_name = state
+        .current_group()
+        .map(|g| g.group.as_str())
+        .unwrap_or("—");
+    
+    let title_text = format!("📈 台灣股市即時行情  —  {}", group_name);
+    
+    let title = Paragraph::new(title_text)
+        .style(Style::new().fg(theme.header_bg).bg(theme.header_fg).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::new().fg(theme.border))
+            .style(Style::new().bg(theme.header_fg)));
+    frame.render_widget(title, area);
+}
+
+fn draw_key_hints(frame: &mut Frame, area: Rect, theme: &ThemeColors) {
+    let hints = vec![
+        Line::from(vec![
+            Span::styled("  Tab/→ ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("下一分頁  ", Style::new().fg(theme.fg)),
+            Span::styled("Shift+Tab/← ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("上一分頁  ", Style::new().fg(theme.fg)),
+            Span::styled("r ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("手動更新  ", Style::new().fg(theme.fg)),
+            Span::styled("t ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("切換主題  ", Style::new().fg(theme.fg)),
+            Span::styled("q/Esc ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("離開", Style::new().fg(theme.fg)),
+        ]),
+        Line::from(vec![
+            Span::styled("  ↑/↓ ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("選取股票  ", Style::new().fg(theme.fg)),
+            Span::styled("Enter ", Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+            Span::styled("查看詳細", Style::new().fg(theme.fg)),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(hints)
+        .style(Style::new().fg(theme.fg).bg(theme.bg))
+        .block(Block::default().borders(Borders::TOP).border_style(Style::new().fg(theme.border)));
+
+    frame.render_widget(paragraph, area);
 }
 
 fn header_style(theme: &ThemeColors) -> Style {

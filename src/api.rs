@@ -82,9 +82,18 @@ pub async fn fetch_quotes(codes: &[String]) -> Result<Vec<Quote>, ApiError> {
             let price_str = q.trade_info.as_ref().map(|t| t.z.as_str()).unwrap_or(&q.z);
             let price = price_str.parse::<f64>().unwrap_or(f64::NAN);
 
-            // f and g have multiple values separated by _, take the first one
-            let change = q.f.split('_').next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
-            let pct = q.g.split('_').next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
+            // Previous close price (y field)
+            let prev_close = q.y.parse::<f64>().unwrap_or(f64::NAN);
+
+            // Calculate change and pct from current price and previous close
+            let (change, pct) = if price.is_finite() && prev_close.is_finite() && prev_close != 0.0 {
+                let chg = price - prev_close;
+                let pct_chg = (chg / prev_close) * 100.0;
+                (chg, pct_chg)
+            } else {
+                (0.0, 0.0)
+            };
+
             let volume = q.v.parse::<u64>().unwrap_or(0);
 
             results.push(Quote {
