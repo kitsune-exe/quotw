@@ -10,6 +10,9 @@ pub struct Quote {
     pub pct: f64,
     pub volume: u64,
     pub time: String,
+    pub prev_close: f64,
+    pub limit_up: f64,
+    pub limit_down: f64,
 }
 
 impl Quote {
@@ -22,11 +25,30 @@ impl Quote {
             pct: 0.0,
             volume: 0,
             time: "--:--:--".into(),
+            prev_close: f64::NAN,
+            limit_up: f64::NAN,
+            limit_down: f64::NAN,
         }
     }
 
     pub fn is_valid(&self) -> bool {
         self.price.is_finite()
+    }
+
+    /// 是否為漲停（目前價格等於交易所提供的漲停價）
+    pub fn is_limit_up(&self) -> bool {
+        if !self.is_valid() || !self.limit_up.is_finite() {
+            return false;
+        }
+        (self.price - self.limit_up).abs() < f64::EPSILON
+    }
+
+    /// 是否為跌停（目前價格等於交易所提供的跌停價）
+    pub fn is_limit_down(&self) -> bool {
+        if !self.is_valid() || !self.limit_down.is_finite() {
+            return false;
+        }
+        (self.price - self.limit_down).abs() < f64::EPSILON
     }
 
     pub fn price_display(&self) -> String {
@@ -60,10 +82,9 @@ impl Quote {
         if !self.is_valid() {
             return "--".into();
         }
+        // Volume is already in 張 from API
         let v = self.volume as f64;
-        if v >= 1_000_000_000.0 {
-            format!("{:.1}B", v / 1_000_000_000.0)
-        } else if v >= 1_000_000.0 {
+        if v >= 1_000_000.0 {
             format!("{:.1}M", v / 1_000_000.0)
         } else if v >= 1_000.0 {
             format!("{:.1}K", v / 1_000.0)
@@ -87,9 +108,85 @@ impl Quote {
 }
 
 #[derive(Debug, Clone)]
+pub struct IndexQuote {
+    pub name: String,
+    pub price: f64,
+    pub change: f64,
+    pub pct: f64,
+    pub time: String,
+}
+
+impl IndexQuote {
+    pub fn empty() -> Self {
+        Self {
+            name: "加權指數".to_string(),
+            price: f64::NAN,
+            change: 0.0,
+            pct: 0.0,
+            time: "--:--:--".to_string(),
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.price.is_finite()
+    }
+
+    pub fn price_display(&self) -> String {
+        if !self.is_valid() {
+            return "--".into();
+        }
+        format!("{:.2}", self.price)
+    }
+
+    pub fn change_display(&self) -> String {
+        if !self.is_valid() {
+            return "--".into();
+        }
+        let sign = if self.change >= 0.0 { "+" } else { "" };
+        format!("{}{:.2}", sign, self.change)
+    }
+
+    pub fn pct_display(&self) -> String {
+        if !self.is_valid() {
+            return "--".into();
+        }
+        let sign = if self.pct >= 0.0 { "+" } else { "" };
+        format!("{}{:.2}%", sign, self.pct)
+    }
+
+    pub fn change_color(&self) -> &'static str {
+        if !self.is_valid() {
+            return "none";
+        }
+        if self.change > 0.0 {
+            "up"
+        } else if self.change < 0.0 {
+            "down"
+        } else {
+            "none"
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct GroupView {
     pub group: String,
     pub items: Vec<Quote>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PopupState {
+    None,
+    AddStock { group: String, code: String, name: String, field: usize, error: Option<String> },
+    AddGroup { name: String },
+    EditStock { group: String, index: usize, code: String, name: String, field: usize },
+    DeleteConfirm { item_type: DeleteType, name: String },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DeleteType {
+    Stock { group: String, index: usize },
+    Group { group: String },
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +197,9 @@ pub struct AppState {
     pub last_update: DateTime<Local>,
     pub loading: bool,
     pub refresh_interval_secs: u64,
+    pub popup: PopupState,
+    pub selected_index: usize,
+    pub index_quote: IndexQuote,
 }
 
 impl AppState {
@@ -111,6 +211,9 @@ impl AppState {
             last_update: Local::now(),
             loading: false,
             refresh_interval_secs,
+            popup: PopupState::None,
+            selected_index: 0,
+            index_quote: IndexQuote::empty(),
         }
     }
 
@@ -125,12 +228,52 @@ impl AppState {
     pub fn next_tab(&mut self) {
         if !self.groups.is_empty() {
             self.current_tab = (self.current_tab + 1) % self.groups.len();
+            self.selected_index = 0;
         }
     }
 
     pub fn prev_tab(&mut self) {
         if !self.groups.is_empty() {
             self.current_tab = (self.current_tab + self.groups.len() - 1) % self.groups.len();
+            self.selected_index = 0;
         }
+    }
+
+    pub fn select_next(&mut self) {
+        if let Some(group) = self.current_group() {
+            if !group.items.is_empty() {
+                self.selected_index = (self.selected_index + 1) % group.items.len();
+            }
+        }
+    }
+
+    pub fn select_prev(&mut self) {
+        if let Some(group) = self.current_group() {
+            if !group.items.is_empty() {
+                self.selected_index = (self.selected_index + group.items.len() - 1) % group.items.len();
+            }
+        }
+    }
+
+    /// 確保 selected_index 在當前群組的有效範圍內
+    pub fn clamp_selected_index(&mut self) {
+        if let Some(group) = self.current_group() {
+            if group.items.is_empty() {
+                self.selected_index = 0;
+            } else if self.selected_index >= group.items.len() {
+                self.selected_index = group.items.len() - 1;
+            }
+        } else {
+            self.selected_index = 0;
+        }
+    }
+
+    pub fn selected_stock(&self) -> Option<&Quote> {
+        self.current_group()?.items.get(self.selected_index)
+    }
+
+    pub fn selected_stock_mut(&mut self) -> Option<&mut Quote> {
+        let idx = self.selected_index;
+        self.current_group_mut()?.items.get_mut(idx)
     }
 }
