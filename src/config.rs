@@ -102,7 +102,7 @@ impl ThemeColors {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "ratatui-quote", version, about = "Taiwan Stock Quote TUI")]
+#[command(name = "quotw", version, about = "Taiwan Stock Quote TUI")]
 struct CliArgs {
 }
 
@@ -131,7 +131,7 @@ pub fn load_or_build() -> color_eyre::Result<(Config, ThemeColors)> {
 
 fn config_file_path() -> color_eyre::Result<PathBuf> {
     let mut path = config_dir().ok_or_else(|| color_eyre::eyre::eyre!("No config dir"))?;
-    path.push("ratatui-quote");
+    path.push("quotw");
     fs::create_dir_all(&path)?;
     path.push("config.json");
     Ok(path)
@@ -139,7 +139,7 @@ fn config_file_path() -> color_eyre::Result<PathBuf> {
 
 fn portfolio_file_path() -> color_eyre::Result<PathBuf> {
     let mut path = config_dir().ok_or_else(|| color_eyre::eyre::eyre!("No config dir"))?;
-    path.push("ratatui-quote");
+    path.push("quotw");
     fs::create_dir_all(&path)?;
     path.push("portfolio.json");
     Ok(path)

@@ -74,7 +74,7 @@ async fn fetch_from_market(client: &Client, market: &str, codes: &[String]) -> R
 
     let resp = client
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (compatible; ratatui-quote)")
+        .header("User-Agent", "Mozilla/5.0 (compatible; quotw)")
         .header("Referer", "https://mis.twse.com.tw/")
         .send()
         .await?;
@@ -200,7 +200,7 @@ pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
 
     let resp = client
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (compatible; ratatui-quote)")
+        .header("User-Agent", "Mozilla/5.0 (compatible; quotw)")
         .header("Referer", "https://mis.twse.com.tw/")
         .send()
         .await?;

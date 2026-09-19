@@ -1,5 +1,5 @@
 [package]
-name = "ratatui-quote"
+name = "quotw"
 version = "0.1.0"
 edition = "2024"
 

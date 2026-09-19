@@ -1,4 +1,4 @@
-# ratatui-quote
+# quotw
 
 ## 專案簡介
 

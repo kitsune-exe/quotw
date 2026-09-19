@@ -1,6 +1,6 @@
 .PHONY: build release install uninstall clean help
 
-BINARY_NAME = ratatui-quote
+BINARY_NAME = quotw
 
 build:
 	cargo build
