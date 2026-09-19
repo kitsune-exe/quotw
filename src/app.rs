@@ -25,11 +25,11 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     state.index_quote = index;
 
     let mut current_theme = theme;
-    let theme_names = ["default", "dark", "high_contrast"];
+    let theme_names = ["catppuccin_mocha", "monokai_classic", "tokyo_night"];
     let mut theme_idx = theme_names
         .iter()
         .position(|&n| n == config.theme)
-        .unwrap_or(1);
+        .unwrap_or(0);
 
     // Channel for crossterm events
     let (tx, mut rx) = mpsc::unbounded_channel();

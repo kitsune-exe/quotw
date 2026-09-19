@@ -92,19 +92,6 @@ impl Quote {
             format!("{:.0}", v)
         }
     }
-
-    pub fn change_color(&self) -> &'static str {
-        if !self.is_valid() {
-            return "none";
-        }
-        if self.change > 0.0 {
-            "up"
-        } else if self.change < 0.0 {
-            "down"
-        } else {
-            "none"
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -152,19 +139,6 @@ impl IndexQuote {
         }
         let sign = if self.pct >= 0.0 { "+" } else { "" };
         format!("{}{:.2}%", sign, self.pct)
-    }
-
-    pub fn change_color(&self) -> &'static str {
-        if !self.is_valid() {
-            return "none";
-        }
-        if self.change > 0.0 {
-            "up"
-        } else if self.change < 0.0 {
-            "down"
-        } else {
-            "none"
-        }
     }
 }
 

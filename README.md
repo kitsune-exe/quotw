@@ -31,3 +31,60 @@
 3. 第三階段: 顯示效果調整
     - 製作色彩主題
     - 使用者可選擇主題，並記憶設定值。可利用json存檔。
+
+## 安裝
+
+本專案沒有發布至crates.io，所以需要clone本repo後編譯安裝。
+
+有提供Makefile的腳本，如果有安裝GNU make，可以執行以下命令來自動化一些作業。也可以用cargo原本的指令來做到以下所有動作。
+
+### 編譯並安裝(自動清理中間產物)
+
+    make
+or:
+
+    make install
+
+### 解除安裝
+
+    make uninstall
+
+### 編譯(產生debug資訊)
+
+    make build
+
+### 編譯(release)
+
+    make release
+
+### 清除編譯的中間產物
+
+    make clean
+
+### 解釋make選項
+
+    make help
+
+## 快速開始
+
+### 啟動程式
+
+    quotw
+
+啟動程式後會在檢查有無`~/.config/quotw`，若無則創建該資料夾並生成`config.json`以及`portfolio.json`。前者儲存設定值，後者儲存選股資訊。
+
+### 不進入TUI，僅作單次報價(portfolio.json內容)
+
+    quotw -o
+
+or
+
+    quotw --once
+
+### 不進入TUI，僅針對輸入代號進行報價
+
+    quotw -o <code1> <code2> ...
+
+or
+
+    quotw --once <code1> <code2> ...

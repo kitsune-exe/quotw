@@ -33,7 +33,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            theme: "dark".into(),
+            theme: "catppuccin_mocha".into(),
             refresh_interval_secs: 60,
         }
     }
@@ -52,62 +52,69 @@ pub struct ThemeColors {
 }
 
 impl ThemeColors {
-    pub fn default_theme() -> Self {
+    pub fn catppuccin_mocha() -> Self {
         Self {
-            fg: Color::White,
-            bg: Color::Black,
-            border: Color::Gray,
-            selected: Color::Yellow,
-            up: Color::Red,
-            down: Color::Green,
-            header_fg: Color::Black,
-            header_bg: Color::Cyan,
+            fg: Color::Rgb(205, 214, 244),
+            bg: Color::Rgb(30, 30, 46),
+            border: Color::Rgb(49, 50, 68),
+            selected: Color::Rgb(249, 226, 175),
+            up: Color::Rgb(243, 139, 168),
+            down: Color::Rgb(166, 227, 161),
+            header_fg: Color::Rgb(30, 30, 46),
+            header_bg: Color::Rgb(137, 180, 250),
         }
     }
 
-    pub fn dark_theme() -> Self {
+    pub fn monokai_classic() -> Self {
         Self {
-            fg: Color::Rgb(220, 220, 220),
-            bg: Color::Rgb(30, 30, 30),
-            border: Color::Rgb(80, 80, 80),
-            selected: Color::Rgb(255, 215, 0),
-            up: Color::Rgb(255, 85, 85),
-            down: Color::Rgb(85, 255, 85),
-            header_fg: Color::Rgb(30, 30, 30),
-            header_bg: Color::Rgb(0, 180, 180),
+            fg: Color::Rgb(248, 248, 242),
+            bg: Color::Rgb(39, 40, 34),
+            border: Color::Rgb(73, 72, 62),
+            selected: Color::Rgb(230, 219, 116),
+            up: Color::Rgb(249, 38, 114),
+            down: Color::Rgb(166, 226, 46),
+            header_fg: Color::Rgb(39, 40, 34),
+            header_bg: Color::Rgb(102, 217, 239),
         }
     }
 
-    pub fn high_contrast_theme() -> Self {
+    pub fn tokyo_night() -> Self {
         Self {
-            fg: Color::Yellow,
-            bg: Color::Black,
-            border: Color::White,
-            selected: Color::Black,
-            up: Color::Red,
-            down: Color::Green,
-            header_fg: Color::Black,
-            header_bg: Color::Yellow,
+            fg: Color::Rgb(169, 177, 214),
+            bg: Color::Rgb(26, 27, 38),
+            border: Color::Rgb(86, 95, 137),
+            selected: Color::Rgb(224, 175, 104),
+            up: Color::Rgb(247, 118, 142),
+            down: Color::Rgb(158, 206, 106),
+            header_fg: Color::Rgb(26, 27, 38),
+            header_bg: Color::Rgb(122, 162, 247),
         }
     }
 
     pub fn from_name(name: &str) -> Self {
         match name {
-            "default" => Self::default_theme(),
-            "dark" => Self::dark_theme(),
-            "high_contrast" => Self::high_contrast_theme(),
-            _ => Self::dark_theme(),
+            "catppuccin_mocha" => Self::catppuccin_mocha(),
+            "monokai_classic" => Self::monokai_classic(),
+            "tokyo_night" => Self::tokyo_night(),
+            _ => Self::catppuccin_mocha(),
         }
     }
 }
 
 #[derive(Parser, Debug)]
 #[command(name = "quotw", version, about = "Taiwan Stock Quote TUI")]
-struct CliArgs {
+pub struct CliArgs {
+    /// 一次性模式：抓取一次報價後輸出並結束
+    #[arg(short, long, action = clap::ArgAction::SetTrue)]
+    pub once: bool,
+
+    /// 股票代碼 (僅在 --once 時使用，不指定則輸出 portfolio 所有群組)
+    #[arg(num_args = 0.., value_name = "CODE")]
+    pub codes: Vec<String>,
 }
 
-pub fn load_or_build() -> color_eyre::Result<(Config, ThemeColors)> {
-    let _cli = CliArgs::parse();
+pub fn load_or_build() -> color_eyre::Result<(Config, ThemeColors, CliArgs)> {
+    let cli = CliArgs::parse();
 
     let config_path = config_file_path()?;
     let config = if config_path.exists() {
@@ -126,7 +133,7 @@ pub fn load_or_build() -> color_eyre::Result<(Config, ThemeColors)> {
     }
 
     let theme = ThemeColors::from_name(&config.theme);
-    Ok((config, theme))
+    Ok((config, theme, cli))
 }
 
 fn config_file_path() -> color_eyre::Result<PathBuf> {
