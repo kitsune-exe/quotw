@@ -7,11 +7,11 @@ edition = "2024"
 color-eyre = "0.6.5"
 crossterm = "0.29.0"
 ratatui = "0.30.2"
-tokio = { version = "1.40", features = ["full"] }
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tokio = { version = "1.53", features = ["full"] }
+reqwest = { version = "0.13", features = ["json", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-dirs = "5.0"
+dirs = "7.0"
 chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }

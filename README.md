@@ -9,11 +9,11 @@
 - **Rust** (Edition 2024)
 - **TUI Framework**: [ratatui](https://github.com/ratatui/ratatui) 0.30.2
 - **Terminal Handling**: [crossterm](https://github.com/crossterm-rs/crossterm) 0.29.0
-- **Async Runtime**: [tokio](https://tokio.rs/) 1.40 (full features)
-- **HTTP Client**: [reqwest](https://github.com/seanmonstar/reqwest) 0.12 (json, rustls-tls)
+- **Async Runtime**: [tokio](https://tokio.rs/) 1.53 (full features)
+- **HTTP Client**: [reqwest](https://github.com/seanmonstar/reqwest) 0.13 (json, rustls)
 - **Serialization**: [serde](https://serde.rs/) 1.0 / [serde_json](https://github.com/serde-rs/json) 1.0
 - **Error Handling**: [color-eyre](https://github.com/yaahc/color-eyre) 0.6.5, [thiserror](https://github.com/dtolnay/thiserror) 2.0
-- **Configuration**: [clap](https://github.com/clap-rs/clap) 4.5 (derive), [dirs](https://github.com/dirs-dev/dirs-rs) 5.0
+- **Configuration**: [clap](https://github.com/clap-rs/clap) 4.6 (derive), [dirs](https://github.com/dirs-dev/dirs-rs) 7.0
 - **Date/Time**: [chrono](https://github.com/chronotope/chrono) 0.4 (serde support)
 
 ## 專案路線
