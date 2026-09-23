@@ -251,3 +251,63 @@ impl AppState {
         self.current_group_mut()?.items.get_mut(idx)
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn quote(price: f64, change: f64, pct: f64, volume: u64) -> Quote {
+        Quote {
+            price,
+            change,
+            pct,
+            volume,
+            ..Quote::empty("2330", "台積電")
+        }
+    }
+
+    #[test]
+    fn empty_quote_displays_placeholders() {
+        let q = Quote::empty("2330", "台積電");
+        assert!(!q.is_valid());
+        assert_eq!(q.price_display(), "--");
+        assert_eq!(q.change_display(), "--");
+        assert_eq!(q.pct_display(), "--");
+        assert_eq!(q.volume_display(), "--");
+    }
+
+    #[test]
+    fn price_display_drops_decimals_at_or_above_1000() {
+        assert_eq!(quote(999.5, 0.0, 0.0, 0).price_display(), "999.50");
+        assert_eq!(quote(1085.0, 0.0, 0.0, 0).price_display(), "1085");
+    }
+
+    #[test]
+    fn change_and_pct_display_include_sign() {
+        let up = quote(100.0, 1.5, 1.52, 0);
+        assert_eq!(up.change_display(), "+1.50");
+        assert_eq!(up.pct_display(), "+1.52%");
+
+        let down = quote(100.0, -2.0, -1.96, 0);
+        assert_eq!(down.change_display(), "-2.00");
+        assert_eq!(down.pct_display(), "-1.96%");
+    }
+
+    #[test]
+    fn volume_display_uses_k_and_m_suffixes() {
+        assert_eq!(quote(100.0, 0.0, 0.0, 999).volume_display(), "999");
+        assert_eq!(quote(100.0, 0.0, 0.0, 12_345).volume_display(), "12.3K");
+        assert_eq!(quote(100.0, 0.0, 0.0, 2_500_000).volume_display(), "2.5M");
+    }
+
+    #[test]
+    fn limit_up_and_down_detection() {
+        let mut q = quote(110.0, 10.0, 10.0, 0);
+        q.limit_up = 110.0;
+        q.limit_down = 90.0;
+        assert!(q.is_limit_up());
+        assert!(!q.is_limit_down());
+
+        q.limit_up = f64::NAN;
+        assert!(!q.is_limit_up());
+    }
+}
