@@ -22,29 +22,29 @@ struct TwseResponse {
 
 #[derive(Debug, Deserialize)]
 struct TwseQuote {
-    c: String,      // code (e.g., "2330")
+    c: String, // code (e.g., "2330")
     #[serde(default)]
-    n: String,      // name
+    n: String, // name
     #[serde(default)]
-    z: String,      // price (often "-")
+    z: String, // price (often "-")
     #[serde(default)]
-    v: String,      // volume
+    v: String, // volume
     #[serde(default)]
-    t: String,      // time
+    t: String, // time
     #[serde(default)]
-    f: String,      // change (漲跌), format: "val1_val2_..."
+    f: String, // change (漲跌), format: "val1_val2_..."
     #[serde(default)]
-    g: String,      // change percent (漲跌%), format: "val1_val2_..."
+    g: String, // change percent (漲跌%), format: "val1_val2_..."
     #[serde(default)]
-    y: String,      // yesterday close
+    y: String, // yesterday close
     #[serde(default)]
-    h: String,      // high
+    h: String, // high
     #[serde(default)]
-    l: String,      // low
+    l: String, // low
     #[serde(default)]
-    o: String,      // open
+    o: String, // open
     #[serde(default, rename = "u")]
-    limit_up: String,   // 漲停價
+    limit_up: String, // 漲停價
     #[serde(default, rename = "w")]
     limit_down: String, // 跌停價
     #[serde(rename = "trade", default)]
@@ -53,10 +53,14 @@ struct TwseQuote {
 
 #[derive(Debug, Deserialize)]
 struct TradeInfo {
-    z: String,  // latest trade price (current price)
+    z: String, // latest trade price (current price)
 }
 
-async fn fetch_from_market(client: &Client, market: &str, codes: &[String]) -> Result<Vec<Quote>, ApiError> {
+async fn fetch_from_market(
+    client: &Client,
+    market: &str,
+    codes: &[String],
+) -> Result<Vec<Quote>, ApiError> {
     if codes.is_empty() {
         return Ok(vec![]);
     }
@@ -104,7 +108,8 @@ async fn fetch_from_market(client: &Client, market: &str, codes: &[String]) -> R
             let limit_up = q.limit_up.parse::<f64>().unwrap_or(f64::NAN);
             let limit_down = q.limit_down.parse::<f64>().unwrap_or(f64::NAN);
 
-            let (change, pct) = if price.is_finite() && prev_close.is_finite() && prev_close != 0.0 {
+            let (change, pct) = if price.is_finite() && prev_close.is_finite() && prev_close != 0.0
+            {
                 let chg = price - prev_close;
                 let pct_chg = (chg / prev_close) * 100.0;
                 (chg, pct_chg)
@@ -112,7 +117,7 @@ async fn fetch_from_market(client: &Client, market: &str, codes: &[String]) -> R
                 (0.0, 0.0)
             };
 
-            let volume_str = q.v.replace(',', "").replace(' ', "");
+            let volume_str = q.v.replace([',', ' '], "");
             // TWSE API returns volume in 張 (1000 shares) for both TSE and OTC
             let volume = volume_str.parse::<u64>().unwrap_or(0);
 
@@ -185,8 +190,8 @@ pub async fn fetch_quotes(codes: &[String]) -> Result<Vec<Quote>, ApiError> {
 pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
     let client = Client::new();
     // TWSE index code is typically "0000" or "t00"
-    let codes = vec!["t00".to_string()];
-    
+    let codes = ["t00".to_string()];
+
     let ex_ch = codes
         .iter()
         .map(|c| format!("tse_{}.tw", c))
@@ -211,9 +216,9 @@ pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
     if let Some(q) = twse_resp.msg_array.first() {
         let price_str = q.trade_info.as_ref().map(|t| t.z.as_str()).unwrap_or(&q.z);
         let price = price_str.parse::<f64>().unwrap_or(f64::NAN);
-        
+
         let prev_close = q.y.parse::<f64>().unwrap_or(f64::NAN);
-        
+
         let (change, pct) = if price.is_finite() && prev_close.is_finite() && prev_close != 0.0 {
             let chg = price - prev_close;
             let pct_chg = (chg / prev_close) * 100.0;
