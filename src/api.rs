@@ -32,17 +32,11 @@ struct TwseQuote {
     #[serde(default)]
     t: String, // time
     #[serde(default)]
-    f: String, // change (漲跌), format: "val1_val2_..."
-    #[serde(default)]
-    g: String, // change percent (漲跌%), format: "val1_val2_..."
-    #[serde(default)]
     y: String, // yesterday close
     #[serde(default)]
     h: String, // high
     #[serde(default)]
     l: String, // low
-    #[serde(default)]
-    o: String, // open
     #[serde(default, rename = "u")]
     limit_up: String, // 漲停價
     #[serde(default, rename = "w")]
