@@ -11,6 +11,8 @@ pub struct Quote {
     pub volume: u64,
     pub time: String,
     pub prev_close: f64,
+    pub high: f64,
+    pub low: f64,
     pub limit_up: f64,
     pub limit_down: f64,
 }
@@ -26,6 +28,8 @@ impl Quote {
             volume: 0,
             time: "--:--:--".into(),
             prev_close: f64::NAN,
+            high: f64::NAN,
+            low: f64::NAN,
             limit_up: f64::NAN,
             limit_down: f64::NAN,
         }
@@ -62,6 +66,14 @@ impl Quote {
         }
     }
 
+    pub fn high_display(&self) -> String {
+        range_price_display(self.high)
+    }
+
+    pub fn low_display(&self) -> String {
+        range_price_display(self.low)
+    }
+
     pub fn change_display(&self) -> String {
         if !self.is_valid() {
             return "--".into();
@@ -91,6 +103,18 @@ impl Quote {
         } else {
             format!("{:.0}", v)
         }
+    }
+}
+
+/// 最高/最低價格式（尚未成交時交易所回傳 "-"，解析為 NaN）
+fn range_price_display(v: f64) -> String {
+    if !v.is_finite() {
+        return "--".into();
+    }
+    if v >= 1000.0 {
+        format!("{:.0}", v)
+    } else {
+        format!("{:.2}", v)
     }
 }
 
@@ -290,6 +314,17 @@ mod tests {
         assert_eq!(q.change_display(), "--");
         assert_eq!(q.pct_display(), "--");
         assert_eq!(q.volume_display(), "--");
+        assert_eq!(q.high_display(), "--");
+        assert_eq!(q.low_display(), "--");
+    }
+
+    #[test]
+    fn high_and_low_display() {
+        let mut q = quote(100.0, 0.0, 0.0, 0);
+        q.high = 102.5;
+        q.low = 1005.0;
+        assert_eq!(q.high_display(), "102.50");
+        assert_eq!(q.low_display(), "1005");
     }
 
     #[test]

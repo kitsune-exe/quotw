@@ -43,6 +43,8 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         Cell::from("現價").style(header_style(theme)),
         Cell::from("漲跌").style(header_style(theme)),
         Cell::from("%").style(header_style(theme)),
+        Cell::from("最高").style(header_style(theme)),
+        Cell::from("最低").style(header_style(theme)),
         Cell::from("成交量").style(header_style(theme)),
     ])
     .height(1);
@@ -55,6 +57,8 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         Constraint::Length(10), // 現價
         Constraint::Length(10), // 漲跌
         Constraint::Length(8),  // %
+        Constraint::Length(10), // 最高
+        Constraint::Length(10), // 最低
         Constraint::Length(10), // 成交量
     ];
 
@@ -188,6 +192,21 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
         (theme.fg, theme.fg, Style::new().fg(theme.fg))
     };
 
+    // 最高/最低依與昨收比較著色；漲跌停列沿用白字
+    let range_color = |v: f64| {
+        if is_limit_up || is_limit_down {
+            Color::White
+        } else if !v.is_finite() || !q.prev_close.is_finite() {
+            theme.fg
+        } else if v > q.prev_close {
+            theme.up
+        } else if v < q.prev_close {
+            theme.down
+        } else {
+            theme.fg
+        }
+    };
+
     Row::new(vec![
         Cell::from(q.code.as_str()).style(row_style),
         Cell::from(q.name.as_str()).style(row_style),
@@ -205,6 +224,16 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
         Cell::from(q.pct_display()).style(
             Style::new()
                 .fg(change_color)
+                .bg(row_style.bg.unwrap_or(theme.bg)),
+        ),
+        Cell::from(q.high_display()).style(
+            Style::new()
+                .fg(range_color(q.high))
+                .bg(row_style.bg.unwrap_or(theme.bg)),
+        ),
+        Cell::from(q.low_display()).style(
+            Style::new()
+                .fg(range_color(q.low))
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
         Cell::from(q.volume_display()).style(
