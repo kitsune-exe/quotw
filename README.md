@@ -1,5 +1,7 @@
 # quotw
 
+[![CI](https://github.com/kitsune-exe/quotw/actions/workflows/ci.yml/badge.svg)](https://github.com/kitsune-exe/quotw/actions/workflows/ci.yml)
+
 ## 專案簡介
 
 本專案是一個TUI APP，可從台灣證交所(上市、上櫃)取得自選股及加權指數的報價，並定期自動更新(預設每60秒)。
@@ -48,6 +50,23 @@
 
 ## 安裝
 
+### 下載預先編譯的執行檔
+
+至[Releases](https://github.com/kitsune-exe/quotw/releases)頁面下載對應平台的壓縮檔，解壓後將`quotw`(Windows為`quotw.exe`)放到`PATH`內的資料夾即可。
+
+| 平台 | 檔案 |
+| --- | --- |
+| Linux x86_64 | `quotw-<版本>-x86_64-unknown-linux-gnu.tar.gz` |
+| Windows x86_64 | `quotw-<版本>-x86_64-pc-windows-msvc.zip` |
+| macOS Apple Silicon | `quotw-<版本>-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `quotw-<版本>-x86_64-apple-darwin.tar.gz` |
+
+macOS的執行檔未經簽章，首次執行前需解除隔離屬性:
+
+    xattr -d com.apple.quarantine quotw
+
+### 從原始碼編譯
+
 本專案沒有發布至crates.io，所以需要clone本repo後編譯安裝。
 
 有提供Makefile的腳本，如果有安裝GNU make，可以執行以下命令來自動化一些作業。也可以用cargo原本的指令來做到以下所有動作。
@@ -85,7 +104,7 @@ or:
 
     quotw
 
-啟動程式後會在檢查有無`~/.config/quotw`，若無則創建該資料夾並生成`config.json`以及`portfolio.json`。前者儲存設定值，後者儲存選股資訊。
+啟動程式後會在檢查有無設定檔資料夾(位置見[設定檔](#設定檔))，若無則創建該資料夾並生成`config.json`以及`portfolio.json`。前者儲存設定值，後者儲存選股資訊。
 
 ### 不進入TUI，僅作單次報價(portfolio.json內容)
 
@@ -121,7 +140,13 @@ or
 
 ## 設定檔
 
-設定檔位於`~/.config/quotw/`。
+設定檔位置依平台而定:
+
+| 平台 | 位置 |
+| --- | --- |
+| Linux | `~/.config/quotw/` |
+| macOS | `~/Library/Application Support/quotw/` |
+| Windows | `%APPDATA%\quotw\` |
 
 ### config.json
 
