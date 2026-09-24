@@ -8,8 +8,6 @@ use thiserror::Error;
 pub enum ApiError {
     #[error("Request failed: {0}")]
     Request(#[from] reqwest::Error),
-    #[error("Invalid response: {0}")]
-    InvalidResponse(String),
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
 }
@@ -32,17 +30,11 @@ struct TwseQuote {
     #[serde(default)]
     t: String, // time
     #[serde(default)]
-    f: String, // change (漲跌), format: "val1_val2_..."
-    #[serde(default)]
-    g: String, // change percent (漲跌%), format: "val1_val2_..."
-    #[serde(default)]
     y: String, // yesterday close
     #[serde(default)]
     h: String, // high
     #[serde(default)]
     l: String, // low
-    #[serde(default)]
-    o: String, // open
     #[serde(default, rename = "u")]
     limit_up: String, // 漲停價
     #[serde(default, rename = "w")]
@@ -236,7 +228,6 @@ pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
             price,
             change,
             pct,
-            time: q.t.clone(),
         })
     } else {
         Ok(IndexQuote {
@@ -244,7 +235,6 @@ pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
             price: f64::NAN,
             change: 0.0,
             pct: 0.0,
-            time: "--:--:--".to_string(),
         })
     }
 }

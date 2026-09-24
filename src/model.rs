@@ -124,7 +124,6 @@ pub struct IndexQuote {
     pub price: f64,
     pub change: f64,
     pub pct: f64,
-    pub time: String,
 }
 
 impl IndexQuote {
@@ -134,7 +133,6 @@ impl IndexQuote {
             price: f64::NAN,
             change: 0.0,
             pct: 0.0,
-            time: "--:--:--".to_string(),
         }
     }
 
@@ -211,21 +209,19 @@ pub struct AppState {
     pub theme_name: String,
     pub last_update: DateTime<Local>,
     pub loading: bool,
-    pub refresh_interval_secs: u64,
     pub popup: PopupState,
     pub selected_index: usize,
     pub index_quote: IndexQuote,
 }
 
 impl AppState {
-    pub fn new(groups: Vec<GroupView>, theme_name: String, refresh_interval_secs: u64) -> Self {
+    pub fn new(groups: Vec<GroupView>, theme_name: String) -> Self {
         Self {
             groups,
             current_tab: 0,
             theme_name,
             last_update: Local::now(),
             loading: false,
-            refresh_interval_secs,
             popup: PopupState::None,
             selected_index: 0,
             index_quote: IndexQuote::empty(),
@@ -234,10 +230,6 @@ impl AppState {
 
     pub fn current_group(&self) -> Option<&GroupView> {
         self.groups.get(self.current_tab)
-    }
-
-    pub fn current_group_mut(&mut self) -> Option<&mut GroupView> {
-        self.groups.get_mut(self.current_tab)
     }
 
     pub fn next_tab(&mut self) {
@@ -285,11 +277,6 @@ impl AppState {
 
     pub fn selected_stock(&self) -> Option<&Quote> {
         self.current_group()?.items.get(self.selected_index)
-    }
-
-    pub fn selected_stock_mut(&mut self) -> Option<&mut Quote> {
-        let idx = self.selected_index;
-        self.current_group_mut()?.items.get_mut(idx)
     }
 }
 #[cfg(test)]
