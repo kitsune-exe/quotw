@@ -357,11 +357,11 @@ fn draw_popup(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         PopupState::AddStock {
             group,
             code,
-            name,
+            name: _,
             field: _,
             error,
         } => {
-            draw_add_stock_popup(frame, popup_area, theme, group, code, name, 0, error);
+            draw_add_stock_popup(frame, popup_area, theme, group, code, error);
         }
         PopupState::AddGroup { name } => {
             draw_add_group_popup(frame, popup_area, theme, name);
@@ -388,8 +388,6 @@ fn draw_add_stock_popup(
     theme: &ThemeColors,
     group: &str,
     code: &str,
-    _name: &str,
-    _field: usize,
     error: &Option<String>,
 ) {
     let block = Block::default()
