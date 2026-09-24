@@ -23,7 +23,7 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     let quotes = fetch_initial_quotes(&watchlist).await?;
     let index = fetch_index().await.unwrap_or_else(|_| IndexQuote::empty());
     let groups = build_groups(&watchlist, quotes, &portfolio);
-    let mut state = AppState::new(groups, config.theme.clone(), config.refresh_interval_secs);
+    let mut state = AppState::new(groups, config.theme.clone());
     state.index_quote = index;
 
     let mut current_theme = theme;
