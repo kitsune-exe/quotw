@@ -105,6 +105,8 @@ async fn fetch_from_market(
             }
 
             let prev_close = q.y.parse::<f64>().unwrap_or(f64::NAN);
+            let high = q.h.parse::<f64>().unwrap_or(f64::NAN);
+            let low = q.l.parse::<f64>().unwrap_or(f64::NAN);
             let limit_up = q.limit_up.parse::<f64>().unwrap_or(f64::NAN);
             let limit_down = q.limit_down.parse::<f64>().unwrap_or(f64::NAN);
 
@@ -130,6 +132,8 @@ async fn fetch_from_market(
                 volume,
                 time: q.t.clone(),
                 prev_close,
+                high,
+                low,
                 limit_up,
                 limit_down,
             });
