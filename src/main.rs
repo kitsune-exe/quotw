@@ -4,9 +4,9 @@ mod config;
 mod model;
 mod ui;
 
+use crate::config::Config;
 use color_eyre::Result;
 use config::load_or_build;
-use crate::config::Config;
 use ratatui::init;
 
 #[tokio::main]
@@ -26,14 +26,18 @@ async fn main() -> Result<()> {
     result
 }
 
-async fn run_once(config: &Config, codes: Vec<String>) -> Result<()> {
+async fn run_once(_config: &Config, codes: Vec<String>) -> Result<()> {
     use crate::api::{fetch_index, fetch_quotes};
     use crate::config::load_portfolio;
 
     let codes_to_fetch: Vec<String> = if codes.is_empty() {
         // No codes specified, use portfolio
         let portfolio = load_portfolio()?.unwrap_or_default();
-        portfolio.groups.iter().flat_map(|g| g.code.clone()).collect()
+        portfolio
+            .groups
+            .iter()
+            .flat_map(|g| g.code.clone())
+            .collect()
     } else {
         // Use provided codes
         codes.iter().map(|c| c.to_ascii_uppercase()).collect()
@@ -45,11 +49,16 @@ async fn run_once(config: &Config, codes: Vec<String>) -> Result<()> {
     }
 
     let quotes = fetch_quotes(&codes_to_fetch).await?;
-    let index = fetch_index().await.unwrap_or_else(|_| crate::model::IndexQuote::empty());
+    let index = fetch_index()
+        .await
+        .unwrap_or_else(|_| crate::model::IndexQuote::empty());
 
     // Print index
     if index.is_valid() {
-        println!("{} {:.2} {:+.2} ({:+.2}%)", index.name, index.price, index.change, index.pct);
+        println!(
+            "{} {:.2} {:+.2} ({:+.2}%)",
+            index.name, index.price, index.change, index.pct
+        );
     }
 
     println!();
@@ -65,8 +74,10 @@ async fn run_once(config: &Config, codes: Vec<String>) -> Result<()> {
             for code in &group.code {
                 if let Some(q) = quotes.iter().find(|q| q.code == *code) {
                     if q.is_valid() {
-                        println!("{} {} {:.2} {:+.2} ({:+.2}%) vol:{}", 
-                            q.code, q.name, q.price, q.change, q.pct, q.volume);
+                        println!(
+                            "{} {} {:.2} {:+.2} ({:+.2}%) vol:{}",
+                            q.code, q.name, q.price, q.change, q.pct, q.volume
+                        );
                     } else {
                         println!("{} {} --", q.code, q.name);
                     }
@@ -79,8 +90,10 @@ async fn run_once(config: &Config, codes: Vec<String>) -> Result<()> {
         for code in &codes_to_fetch {
             if let Some(q) = quotes.iter().find(|q| q.code == *code) {
                 if q.is_valid() {
-                    println!("{} {} {:.2} {:+.2} ({:+.2}%) vol:{}", 
-                        q.code, q.name, q.price, q.change, q.pct, q.volume);
+                    println!(
+                        "{} {} {:.2} {:+.2} ({:+.2}%) vol:{}",
+                        q.code, q.name, q.price, q.change, q.pct, q.volume
+                    );
                 } else {
                     println!("{} {} --", q.code, q.name);
                 }

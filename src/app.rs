@@ -1,5 +1,7 @@
 use crate::api::{fetch_index, fetch_quotes};
-use crate::config::{load_portfolio, save_config, save_portfolio, Config, Portfolio, ThemeColors, WatchItem};
+use crate::config::{
+    Config, Portfolio, ThemeColors, WatchItem, load_portfolio, save_config, save_portfolio,
+};
 use crate::model::{AppState, DeleteType, GroupView, IndexQuote, PopupState, Quote};
 use crate::ui::draw;
 use color_eyre::Result;
@@ -7,8 +9,8 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::DefaultTerminal;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::time::interval;
 use tokio::sync::mpsc;
+use tokio::time::interval;
 
 pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeColors) -> Result<()> {
     let refresh_interval = Duration::from_secs(config.refresh_interval_secs);
@@ -35,10 +37,10 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     let (tx, mut rx) = mpsc::unbounded_channel();
     std::thread::spawn(move || {
         loop {
-            if let Ok(event) = event::read() {
-                if tx.send(event).is_err() {
-                    break;
-                }
+            if let Ok(event) = event::read()
+                && tx.send(event).is_err()
+            {
+                break;
             }
         }
     });
@@ -58,8 +60,8 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
         tokio::select! {
             // Handle keyboard events
             Some(event) = rx.recv() => {
-                if let Event::Key(key) = event {
-                    if key.kind == KeyEventKind::Press {
+                if let Event::Key(key) = event
+                    && key.kind == KeyEventKind::Press {
                         // Handle popup input first
                         if !matches!(state.popup, PopupState::None) {
                             handle_popup_input(&key.code, &mut state, &mut portfolio).await?;
@@ -149,7 +151,6 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                             _ => {}
                         }
                     }
-                }
             }
             // Periodic update
             _ = tick_interval.tick() => {
@@ -180,28 +181,66 @@ async fn handle_popup_input(
 ) -> Result<()> {
     match (&mut state.popup, key) {
         // Add Stock - only need code
-        (PopupState::AddStock { group, code, name, field, error: _ }, KeyCode::Esc) => {
+        (
+            PopupState::AddStock {
+                group: _,
+                code: _,
+                name: _,
+                field: _,
+                error: _,
+            },
+            KeyCode::Esc,
+        ) => {
             state.popup = PopupState::None;
         }
-        (PopupState::AddStock { group, code, name, field, error: _ }, KeyCode::Char(c)) => {
+        (
+            PopupState::AddStock {
+                group: _,
+                code,
+                name: _,
+                field: _,
+                error: _,
+            },
+            KeyCode::Char(c),
+        ) => {
             if c.is_ascii_alphanumeric() {
                 code.push(c.to_ascii_uppercase());
             }
         }
-        (PopupState::AddStock { group, code, name, field, error: _ }, KeyCode::Backspace) => {
+        (
+            PopupState::AddStock {
+                group: _,
+                code,
+                name: _,
+                field: _,
+                error: _,
+            },
+            KeyCode::Backspace,
+        ) => {
             code.pop();
         }
-        (PopupState::AddStock { group, code, name, field: _, error }, KeyCode::Enter) => {
+        (
+            PopupState::AddStock {
+                group,
+                code,
+                name: _,
+                field: _,
+                error,
+            },
+            KeyCode::Enter,
+        ) => {
             if !code.is_empty() {
                 // Clear previous error
                 *error = None;
                 // Validate code by fetching quote
-                match fetch_quotes(&[code.clone()]).await {
+                match fetch_quotes(std::slice::from_ref(code)).await {
                     Ok(quotes) => {
                         if let Some(quote) = quotes.first() {
                             if quote.is_valid() {
                                 // Valid code - add to portfolio
-                                if let Some(portfolio_group) = portfolio.groups.iter_mut().find(|g| g.group_name == *group) {
+                                if let Some(portfolio_group) =
+                                    portfolio.groups.iter_mut().find(|g| g.group_name == *group)
+                                {
                                     portfolio_group.code.push(code.clone());
                                 }
                                 save_and_refresh(portfolio, state).await?;
@@ -221,7 +260,7 @@ async fn handle_popup_input(
         }
 
         // Add Group
-        (PopupState::AddGroup { name }, KeyCode::Esc) => {
+        (PopupState::AddGroup { name: _ }, KeyCode::Esc) => {
             state.popup = PopupState::None;
         }
         (PopupState::AddGroup { name }, KeyCode::Char(c)) => {
@@ -242,35 +281,90 @@ async fn handle_popup_input(
         }
 
         // Edit Stock
-        (PopupState::EditStock { group, index, code, name, field }, KeyCode::Esc) => {
+        (
+            PopupState::EditStock {
+                group: _,
+                index: _,
+                code: _,
+                name: _,
+                field: _,
+            },
+            KeyCode::Esc,
+        ) => {
             state.popup = PopupState::None;
         }
-        (PopupState::EditStock { group, index, code, name, field }, KeyCode::Tab) => {
+        (
+            PopupState::EditStock {
+                group: _,
+                index: _,
+                code: _,
+                name: _,
+                field,
+            },
+            KeyCode::Tab,
+        ) => {
             *field = (*field + 1) % 2;
         }
-        (PopupState::EditStock { group, index, code, name, field }, KeyCode::BackTab) => {
+        (
+            PopupState::EditStock {
+                group: _,
+                index: _,
+                code: _,
+                name: _,
+                field,
+            },
+            KeyCode::BackTab,
+        ) => {
             *field = if *field == 0 { 1 } else { 0 };
         }
-        (PopupState::EditStock { group, index, code, name, field }, KeyCode::Char(c)) => {
+        (
+            PopupState::EditStock {
+                group: _,
+                index: _,
+                code,
+                name,
+                field,
+            },
+            KeyCode::Char(c),
+        ) => {
             if *field == 0 && c.is_ascii_alphanumeric() {
                 code.push(c.to_ascii_uppercase());
             } else if *field == 1 {
                 name.push(*c);
             }
         }
-        (PopupState::EditStock { group, index, code, name, field }, KeyCode::Backspace) => {
+        (
+            PopupState::EditStock {
+                group: _,
+                index: _,
+                code,
+                name,
+                field,
+            },
+            KeyCode::Backspace,
+        ) => {
             if *field == 0 && !code.is_empty() {
                 code.pop();
             } else if *field == 1 && !name.is_empty() {
                 name.pop();
             }
         }
-        (PopupState::EditStock { group, index, code, name, field: _ }, KeyCode::Enter) => {
+        (
+            PopupState::EditStock {
+                group,
+                index,
+                code,
+                name,
+                field: _,
+            },
+            KeyCode::Enter,
+        ) => {
             if !code.is_empty() && !name.is_empty() {
-                if let Some(portfolio_group) = portfolio.groups.iter_mut().find(|g| g.group_name == *group) {
-                    if *index < portfolio_group.code.len() {
-                        portfolio_group.code[*index] = code.clone();
-                    }
+                if let Some(portfolio_group) =
+                    portfolio.groups.iter_mut().find(|g| g.group_name == *group)
+                    && *index < portfolio_group.code.len()
+                {
+                    portfolio_group.code[*index] = code.clone();
                 }
                 save_and_refresh(portfolio, state).await?;
                 state.popup = PopupState::None;
@@ -278,16 +372,30 @@ async fn handle_popup_input(
         }
 
         // Delete Confirm
-        (PopupState::DeleteConfirm { item_type, name }, KeyCode::Esc) | (PopupState::DeleteConfirm { item_type, name }, KeyCode::Char('n')) => {
+        (
+            PopupState::DeleteConfirm {
+                item_type: _,
+                name: _,
+            },
+            KeyCode::Esc,
+        )
+        | (
+            PopupState::DeleteConfirm {
+                item_type: _,
+                name: _,
+            },
+            KeyCode::Char('n'),
+        ) => {
             state.popup = PopupState::None;
         }
-        (PopupState::DeleteConfirm { item_type, name }, KeyCode::Char('y')) => {
+        (PopupState::DeleteConfirm { item_type, name: _ }, KeyCode::Char('y')) => {
             match item_type {
                 DeleteType::Stock { group, index } => {
-                    if let Some(portfolio_group) = portfolio.groups.iter_mut().find(|g| g.group_name == *group) {
-                        if *index < portfolio_group.code.len() {
-                            portfolio_group.code.remove(*index);
-                        }
+                    if let Some(portfolio_group) =
+                        portfolio.groups.iter_mut().find(|g| g.group_name == *group)
+                        && *index < portfolio_group.code.len()
+                    {
+                        portfolio_group.code.remove(*index);
                     }
                 }
                 DeleteType::Group { group } => {
@@ -319,9 +427,14 @@ async fn fetch_initial_quotes(watchlist: &[WatchItem]) -> Result<Vec<Quote>> {
     Ok(quotes)
 }
 
-fn build_groups(watchlist: &[WatchItem], quotes: Vec<Quote>, portfolio: &Portfolio) -> Vec<GroupView> {
+fn build_groups(
+    watchlist: &[WatchItem],
+    quotes: Vec<Quote>,
+    portfolio: &Portfolio,
+) -> Vec<GroupView> {
     // Build quote map for quick lookup
-    let quote_map: HashMap<String, Quote> = quotes.into_iter().map(|q| (q.code.clone(), q)).collect();
+    let quote_map: HashMap<String, Quote> =
+        quotes.into_iter().map(|q| (q.code.clone(), q)).collect();
 
     // Group by group name, preserving order from portfolio
     let mut group_order: Vec<String> = Vec::new();
@@ -338,7 +451,10 @@ fn build_groups(watchlist: &[WatchItem], quotes: Vec<Quote>, portfolio: &Portfol
             .cloned()
             .unwrap_or_else(|| Quote::empty(&item.code, &item.name));
 
-        group_items.entry(item.group.clone()).or_default().push(quote);
+        group_items
+            .entry(item.group.clone())
+            .or_default()
+            .push(quote);
     }
 
     // Also include empty groups from portfolio that have no codes
@@ -360,7 +476,7 @@ fn build_groups(watchlist: &[WatchItem], quotes: Vec<Quote>, portfolio: &Portfol
 
 fn build_watchlist_from_portfolio(portfolio: &Portfolio) -> Vec<WatchItem> {
     let mut watchlist = Vec::new();
-    
+
     // Use groups from portfolio
     for group in &portfolio.groups {
         for code in &group.code {
@@ -371,6 +487,6 @@ fn build_watchlist_from_portfolio(portfolio: &Portfolio) -> Vec<WatchItem> {
             });
         }
     }
-    
+
     watchlist
 }

@@ -151,10 +151,27 @@ pub struct GroupView {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PopupState {
     None,
-    AddStock { group: String, code: String, name: String, field: usize, error: Option<String> },
-    AddGroup { name: String },
-    EditStock { group: String, index: usize, code: String, name: String, field: usize },
-    DeleteConfirm { item_type: DeleteType, name: String },
+    AddStock {
+        group: String,
+        code: String,
+        name: String,
+        field: usize,
+        error: Option<String>,
+    },
+    AddGroup {
+        name: String,
+    },
+    EditStock {
+        group: String,
+        index: usize,
+        code: String,
+        name: String,
+        field: usize,
+    },
+    DeleteConfirm {
+        item_type: DeleteType,
+        name: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -214,18 +231,18 @@ impl AppState {
     }
 
     pub fn select_next(&mut self) {
-        if let Some(group) = self.current_group() {
-            if !group.items.is_empty() {
-                self.selected_index = (self.selected_index + 1) % group.items.len();
-            }
+        if let Some(group) = self.current_group()
+            && !group.items.is_empty()
+        {
+            self.selected_index = (self.selected_index + 1) % group.items.len();
         }
     }
 
     pub fn select_prev(&mut self) {
-        if let Some(group) = self.current_group() {
-            if !group.items.is_empty() {
-                self.selected_index = (self.selected_index + group.items.len() - 1) % group.items.len();
-            }
+        if let Some(group) = self.current_group()
+            && !group.items.is_empty()
+        {
+            self.selected_index = (self.selected_index + group.items.len() - 1) % group.items.len();
         }
     }
 
