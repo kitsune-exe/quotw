@@ -189,6 +189,7 @@ pub enum PopupState {
         item_type: DeleteType,
         name: String,
     },
+    Help,
 }
 
 #[derive(Debug, Clone, PartialEq)]

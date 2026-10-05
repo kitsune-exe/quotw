@@ -138,6 +138,7 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                                     }
                                 }
                             }
+                            KeyCode::Char('h') => state.popup = PopupState::Help,
                             KeyCode::Up => state.select_prev(),
                             KeyCode::Down => state.select_next(),
                             _ => {}
@@ -380,6 +381,9 @@ async fn handle_popup_input(
                 }
             }
             save_and_refresh(portfolio, state).await?;
+            state.popup = PopupState::None;
+        }
+        (PopupState::Help, KeyCode::Esc | KeyCode::Char('h') | KeyCode::Char('q')) => {
             state.popup = PopupState::None;
         }
         _ => {}
