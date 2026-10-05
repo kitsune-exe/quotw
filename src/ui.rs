@@ -8,8 +8,18 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Cell, Clear, Padding, Paragraph, Row, Table, Tabs},
 };
 
+// 共用網格：標題列與表格共用同一組欄寬
+// 代碼、名稱、現價、漲跌、%、最高、最低、成交量
+const COL_WIDTHS: [u16; 8] = [6, 10, 8, 7, 7, 8, 8, 8];
+const COL_SPACING: u16 = 2;
+
 pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
     let area = frame.area();
+
+    frame.render_widget(
+        Block::default().style(Style::new().bg(theme.bg).fg(theme.fg)),
+        area,
+    );
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -36,17 +46,23 @@ pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
         chunks[1],
     );
 
-    let tabs = Tabs::new(state.groups.iter().map(|g| g.group.as_str()))
-        .select(state.current_tab)
-        .style(Style::new().fg(theme.fg).add_modifier(Modifier::DIM))
-        .highlight_style(
-            Style::new()
-                .fg(theme.selected)
-                .add_modifier(Modifier::BOLD)
-                .remove_modifier(Modifier::DIM),
-        )
-        .divider("")
-        .padding("", "   ");
+    let tabs = Tabs::new(
+        state
+            .groups
+            .iter()
+            .enumerate()
+            .map(|(i, g)| format!("{:02} {}", i + 1, g.group)),
+    )
+    .select(state.current_tab)
+    .style(Style::new().fg(theme.fg).add_modifier(Modifier::DIM))
+    .highlight_style(
+        Style::new()
+            .fg(theme.selected)
+            .add_modifier(Modifier::BOLD)
+            .remove_modifier(Modifier::DIM),
+    )
+    .divider("")
+    .padding("", "   ");
     frame.render_widget(tabs, chunks[2]);
 
     draw_table(frame, chunks[4], state, theme);
@@ -85,20 +101,12 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         Cell::from(Line::from("成交量").alignment(Alignment::Right)),
     ])
     .style(header_style(theme))
-    .height(1);
+    .height(1)
+    .bottom_margin(1);
 
     let rows: Vec<Row> = group.items.iter().map(|q| quote_to_row(q, theme)).collect();
 
-    let widths = [
-        Constraint::Length(8),  // 代碼
-        Constraint::Length(12), // 名稱
-        Constraint::Length(10), // 現價
-        Constraint::Length(10), // 漲跌
-        Constraint::Length(8),  // %
-        Constraint::Length(10), // 最高
-        Constraint::Length(10), // 最低
-        Constraint::Length(10), // 成交量
-    ];
+    let widths = COL_WIDTHS.map(Constraint::Length);
 
     let table = Table::new(rows, widths)
         .header(header)
@@ -108,18 +116,31 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
                 .fg(theme.bg)
                 .add_modifier(Modifier::BOLD),
         )
-        .column_spacing(2);
+        .column_spacing(COL_SPACING);
 
     // Render as stateful widget with selection
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(state.selected_index));
     frame.render_stateful_widget(table, area, &mut table_state);
+
+    // 表頭下方細規線，畫在表頭的 bottom_margin 上
+    if area.height > 1 {
+        frame.render_widget(
+            Block::default()
+                .borders(Borders::TOP)
+                .border_style(Style::new().fg(theme.border)),
+            Rect::new(area.x, area.y + 1, area.width, 1),
+        );
+    }
 }
 
 fn draw_title(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(10), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(COL_WIDTHS[0] + COL_SPACING + COL_WIDTHS[1]),
+            Constraint::Min(0),
+        ])
         .split(area);
 
     let title =
@@ -160,9 +181,7 @@ fn draw_title(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
 }
 
 fn header_style(theme: &ThemeColors) -> Style {
-    Style::new()
-        .fg(theme.fg)
-        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
+    Style::new().fg(theme.fg).add_modifier(Modifier::DIM)
 }
 
 fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
@@ -174,16 +193,16 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
     } else if is_limit_up {
         // 漲停：紅底白字
         (
-            Color::White,
-            Color::White,
-            Style::new().fg(Color::White).bg(theme.up),
+            theme.limit_fg,
+            theme.limit_fg,
+            Style::new().fg(theme.limit_fg).bg(theme.up),
         )
     } else if is_limit_down {
         // 跌停：綠底白字
         (
-            Color::White,
-            Color::White,
-            Style::new().fg(Color::White).bg(theme.down),
+            theme.limit_fg,
+            theme.limit_fg,
+            Style::new().fg(theme.limit_fg).bg(theme.down),
         )
     } else if q.change > 0.0 {
         (theme.up, theme.up, Style::new().fg(theme.fg))
@@ -196,7 +215,7 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
     // 最高/最低依與昨收比較著色；漲跌停列沿用白字
     let range_color = |v: f64| {
         if is_limit_up || is_limit_down {
-            Color::White
+            theme.limit_fg
         } else if !v.is_finite() || !q.prev_close.is_finite() {
             theme.fg
         } else if v > q.prev_close {
@@ -536,7 +555,10 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, theme: &ThemeColors) {
         if i > 0 {
             lines.push(Line::default());
         }
-        lines.push(Line::from(Span::styled(*title, section)));
+        lines.push(Line::from(Span::styled(
+            format!("{:02} {}", i + 1, title),
+            section,
+        )));
         for (k, desc) in items.iter() {
             lines.push(Line::from(vec![
                 Span::styled(format!("  {:<10}", k), key),

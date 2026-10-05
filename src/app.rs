@@ -27,7 +27,12 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     state.index_quote = index;
 
     let mut current_theme = theme;
-    let theme_names = ["catppuccin_mocha", "monokai_classic", "tokyo_night"];
+    let theme_names = [
+        "catppuccin_mocha",
+        "monokai_classic",
+        "tokyo_night",
+        "swiss",
+    ];
     let mut theme_idx = theme_names
         .iter()
         .position(|&n| n == config.theme)
