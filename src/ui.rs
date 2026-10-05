@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
+    widgets::{Block, BorderType, Borders, Cell, Clear, Padding, Paragraph, Row, Table, Tabs},
 };
 
 pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
@@ -13,16 +13,52 @@ pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
+        .horizontal_margin(2)
+        .vertical_margin(1)
         .constraints([
-            Constraint::Length(3), // Title
+            Constraint::Length(1), // Title
+            Constraint::Length(1), // Thick rule
+            Constraint::Length(1), // Group tabs
+            Constraint::Length(1), // Spacing
             Constraint::Min(0),    // Table
-            Constraint::Length(6), // Status bar (merged with key hints)
+            Constraint::Length(1), // Thin rule
+            Constraint::Length(1), // Footer
         ])
         .split(area);
 
     draw_title(frame, chunks[0], state, theme);
-    draw_table(frame, chunks[1], state, theme);
-    draw_status(frame, chunks[2], state, theme);
+
+    frame.render_widget(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_type(BorderType::Thick)
+            .border_style(Style::new().fg(theme.fg)),
+        chunks[1],
+    );
+
+    let tabs = Tabs::new(state.groups.iter().map(|g| g.group.as_str()))
+        .select(state.current_tab)
+        .style(Style::new().fg(theme.fg).add_modifier(Modifier::DIM))
+        .highlight_style(
+            Style::new()
+                .fg(theme.selected)
+                .add_modifier(Modifier::BOLD)
+                .remove_modifier(Modifier::DIM),
+        )
+        .divider("")
+        .padding("", "   ");
+    frame.render_widget(tabs, chunks[2]);
+
+    draw_table(frame, chunks[4], state, theme);
+
+    frame.render_widget(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(Style::new().fg(theme.border)),
+        chunks[5],
+    );
+
+    draw_status(frame, chunks[6], state, theme);
 
     // Draw popup on top if active
     if !matches!(state.popup, PopupState::None) {
@@ -32,21 +68,23 @@ pub fn draw(frame: &mut Frame, state: &AppState, theme: &ThemeColors) {
 
 fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
     let Some(group) = state.current_group() else {
-        let empty = Paragraph::new("No data").alignment(Alignment::Center);
+        let empty =
+            Paragraph::new("No data").style(Style::new().fg(theme.fg).add_modifier(Modifier::DIM));
         frame.render_widget(empty, area);
         return;
     };
 
     let header = Row::new(vec![
-        Cell::from("代碼").style(header_style(theme)),
-        Cell::from("名稱").style(header_style(theme)),
-        Cell::from("現價").style(header_style(theme)),
-        Cell::from("漲跌").style(header_style(theme)),
-        Cell::from("%").style(header_style(theme)),
-        Cell::from("最高").style(header_style(theme)),
-        Cell::from("最低").style(header_style(theme)),
-        Cell::from("成交量").style(header_style(theme)),
+        Cell::from("代碼"),
+        Cell::from("名稱"),
+        Cell::from(Line::from("現價").alignment(Alignment::Right)),
+        Cell::from(Line::from("漲跌").alignment(Alignment::Right)),
+        Cell::from(Line::from("%").alignment(Alignment::Right)),
+        Cell::from(Line::from("最高").alignment(Alignment::Right)),
+        Cell::from(Line::from("最低").alignment(Alignment::Right)),
+        Cell::from(Line::from("成交量").alignment(Alignment::Right)),
     ])
+    .style(header_style(theme))
     .height(1);
 
     let rows: Vec<Row> = group.items.iter().map(|q| quote_to_row(q, theme)).collect();
@@ -62,22 +100,15 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         Constraint::Length(10), // 成交量
     ];
 
-    let block = Block::default()
-        .title(format!(" {} ", group.group))
-        .title_style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_style(Style::new().fg(theme.border));
-
     let table = Table::new(rows, widths)
         .header(header)
-        .block(block)
         .row_highlight_style(
             Style::new()
                 .bg(theme.selected)
                 .fg(theme.bg)
                 .add_modifier(Modifier::BOLD),
         )
-        .column_spacing(1);
+        .column_spacing(2);
 
     // Render as stateful widget with selection
     let mut table_state = ratatui::widgets::TableState::default();
@@ -86,82 +117,52 @@ fn draw_table(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
 }
 
 fn draw_title(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(10), Constraint::Min(0)])
+        .split(area);
+
+    let title =
+        Paragraph::new("台股行情").style(Style::new().fg(theme.fg).add_modifier(Modifier::BOLD));
+    frame.render_widget(title, chunks[0]);
+
     let index = &state.index_quote;
-    let title_text = if index.is_valid() {
-        let (price_color, change_color) = if index.change > 0.0 {
-            (theme.up, theme.up)
+    let dim = Style::new().fg(theme.fg).add_modifier(Modifier::DIM);
+    let index_text = if index.is_valid() {
+        let change_color = if index.change > 0.0 {
+            theme.up
         } else if index.change < 0.0 {
-            (theme.down, theme.down)
+            theme.down
         } else {
-            (theme.fg, theme.fg)
+            theme.fg
         };
 
         Line::from(vec![
-            Span::styled(
-                "📈 台灣股市即時行情  ",
-                Style::new()
-                    .fg(theme.header_bg)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                index.name.clone(),
-                Style::new()
-                    .fg(theme.header_bg)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(" ", Style::new().fg(theme.header_bg).bg(theme.header_fg)),
+            Span::styled(index.name.clone(), dim),
+            Span::raw("  "),
             Span::styled(
                 index.price_display(),
-                Style::new()
-                    .fg(price_color)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
+                Style::new().fg(change_color).add_modifier(Modifier::BOLD),
             ),
-            Span::styled(" ", Style::new().fg(theme.header_bg).bg(theme.header_fg)),
-            Span::styled(
-                index.change_display(),
-                Style::new()
-                    .fg(change_color)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(" ", Style::new().fg(theme.header_bg).bg(theme.header_fg)),
-            Span::styled(
-                index.pct_display(),
-                Style::new()
-                    .fg(change_color)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            Span::raw("  "),
+            Span::styled(index.change_display(), Style::new().fg(change_color)),
+            Span::raw("  "),
+            Span::styled(index.pct_display(), Style::new().fg(change_color)),
         ])
     } else {
-        Line::from(vec![Span::styled(
-            "📈 台灣股市即時行情  大盤指數 --",
-            Style::new()
-                .fg(theme.header_bg)
-                .bg(theme.header_fg)
-                .add_modifier(Modifier::BOLD),
-        )])
+        Line::from(Span::styled("大盤指數 --", dim))
     };
 
-    let title = Paragraph::new(title_text)
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::new().fg(theme.border))
-                .style(Style::new().bg(theme.header_fg)),
-        );
-    frame.render_widget(title, area);
+    frame.render_widget(
+        Paragraph::new(index_text).alignment(Alignment::Right),
+        chunks[1],
+    );
 }
 
 fn header_style(theme: &ThemeColors) -> Style {
     Style::new()
-        .fg(theme.header_fg)
-        .bg(theme.header_bg)
-        .add_modifier(Modifier::BOLD)
+        .fg(theme.fg)
+        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
 }
 
 fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
@@ -207,36 +208,38 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
         }
     };
 
+    let right = |text: String| Line::from(text).alignment(Alignment::Right);
+
     Row::new(vec![
         Cell::from(q.code.as_str()).style(row_style),
         Cell::from(q.name.as_str()).style(row_style),
-        Cell::from(q.price_display()).style(
+        Cell::from(right(q.price_display())).style(
             Style::new()
                 .fg(price_color)
                 .add_modifier(Modifier::BOLD)
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
-        Cell::from(q.change_display()).style(
+        Cell::from(right(q.change_display())).style(
             Style::new()
                 .fg(change_color)
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
-        Cell::from(q.pct_display()).style(
+        Cell::from(right(q.pct_display())).style(
             Style::new()
                 .fg(change_color)
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
-        Cell::from(q.high_display()).style(
+        Cell::from(right(q.high_display())).style(
             Style::new()
                 .fg(range_color(q.high))
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
-        Cell::from(q.low_display()).style(
+        Cell::from(right(q.low_display())).style(
             Style::new()
                 .fg(range_color(q.low))
                 .bg(row_style.bg.unwrap_or(theme.bg)),
         ),
-        Cell::from(q.volume_display()).style(
+        Cell::from(right(q.volume_display())).style(
             Style::new()
                 .fg(theme.fg)
                 .bg(row_style.bg.unwrap_or(theme.bg)),
@@ -247,108 +250,59 @@ fn quote_to_row<'a>(q: &'a Quote, theme: &'a ThemeColors) -> Row<'a> {
 }
 
 fn draw_status(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
-    let loading_indicator = if state.loading { " 🔄" } else { "" };
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(if state.loading { 18 } else { 10 }),
+        ])
+        .split(area);
 
-    let status = Paragraph::new(vec![
-        Line::from(vec![
-            Span::styled(
-                format!(" 更新: {} ", state.last_update.format("%H:%M:%S")),
-                Style::new().fg(theme.fg).bg(theme.bg),
-            ),
-            Span::styled(
-                loading_indicator,
-                Style::new()
-                    .fg(theme.selected)
-                    .bg(theme.bg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                " 導航: ",
-                Style::new()
-                    .fg(theme.header_bg)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                "←/→ ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("切換分頁  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "↑/↓ ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("選取股票", Style::new().fg(theme.fg)),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                " 操作: ",
-                Style::new()
-                    .fg(theme.header_bg)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                "a ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("新增股票  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "A ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("新增分組  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "e ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("編輯  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "d ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("刪除", Style::new().fg(theme.fg)),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                " 系統: ",
-                Style::new()
-                    .fg(theme.header_bg)
-                    .bg(theme.header_fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                "r ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("立即重抓  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "t ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("切換主題  ", Style::new().fg(theme.fg)),
-            Span::styled(
-                "q/Esc ",
-                Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("離開", Style::new().fg(theme.fg)),
-        ]),
-    ])
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::new().fg(theme.border))
-            .title(" 快捷鍵 ")
-            .title_style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD)),
+    let key = Style::new().fg(theme.fg).add_modifier(Modifier::BOLD);
+    let label = Style::new().fg(theme.fg).add_modifier(Modifier::DIM);
+
+    let hints = [("←→", "分組"), ("↑↓", "選取"), ("h", "說明")];
+    let spans: Vec<Span> = hints
+        .iter()
+        .flat_map(|(k, l)| {
+            [
+                Span::styled(format!("{} ", k), key),
+                Span::styled(format!("{}  ", l), label),
+            ]
+        })
+        .collect();
+    frame.render_widget(Paragraph::new(Line::from(spans)), chunks[0]);
+
+    let mut time_spans = Vec::new();
+    if state.loading {
+        time_spans.push(Span::styled(
+            "更新中  ",
+            Style::new().fg(theme.selected).add_modifier(Modifier::BOLD),
+        ));
+    }
+    time_spans.push(Span::styled(
+        state.last_update.format("%H:%M:%S").to_string(),
+        label,
+    ));
+    frame.render_widget(
+        Paragraph::new(Line::from(time_spans)).alignment(Alignment::Right),
+        chunks[1],
     );
-
-    frame.render_widget(status, area);
 }
 
 fn draw_popup(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColors) {
-    let popup_area = centered_rect(60, 40, area);
+    let popup_area = if matches!(state.popup, PopupState::Help) {
+        let width = 48.min(area.width);
+        let height = 20.min(area.height);
+        Rect::new(
+            area.x + (area.width - width) / 2,
+            area.y + (area.height - height) / 2,
+            width,
+            height,
+        )
+    } else {
+        centered_rect(60, 40, area)
+    };
 
     // Clear background using Clear widget
     frame.render_widget(Clear, popup_area);
@@ -372,8 +326,24 @@ fn draw_popup(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
         PopupState::DeleteConfirm { item_type: _, name } => {
             draw_delete_confirm_popup(frame, popup_area, theme, name);
         }
+        PopupState::Help => draw_help_popup(frame, popup_area, theme),
         PopupState::None => {}
     }
+}
+
+fn popup_block(title: String, accent: Color, theme: &ThemeColors) -> Block<'static> {
+    Block::default()
+        .title(title)
+        .title_style(Style::new().fg(accent).add_modifier(Modifier::BOLD))
+        .borders(Borders::TOP)
+        .border_type(BorderType::Thick)
+        .border_style(Style::new().fg(accent))
+        .padding(Padding::new(1, 1, 1, 0))
+        .style(Style::new().bg(theme.bg).fg(theme.fg))
+}
+
+fn hint_style(theme: &ThemeColors) -> Style {
+    Style::new().fg(theme.fg).add_modifier(Modifier::DIM)
 }
 
 fn draw_add_stock_popup(
@@ -384,12 +354,7 @@ fn draw_add_stock_popup(
     code: &str,
     error: &Option<String>,
 ) {
-    let block = Block::default()
-        .title(format!(" 新增股票至 [{}] ", group))
-        .title_style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_style(Style::new().fg(theme.selected))
-        .style(Style::new().bg(theme.bg).fg(theme.fg));
+    let block = popup_block(format!("新增股票至 {}", group), theme.selected, theme);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -405,7 +370,7 @@ fn draw_add_stock_popup(
         .split(inner);
 
     // Code input
-    let code_text = format!("► 代碼: {}", code);
+    let code_text = format!("► 代碼  {}", code);
     let code_para = Paragraph::new(code_text)
         .style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD));
     frame.render_widget(code_para, chunks[0]);
@@ -413,43 +378,37 @@ fn draw_add_stock_popup(
     // Error message
     if let Some(err) = error {
         let err_para = Paragraph::new(format!("  ✗ {}", err))
-            .style(Style::new().fg(theme.up).add_modifier(Modifier::BOLD))
-            .alignment(Alignment::Center);
+            .style(Style::new().fg(theme.up).add_modifier(Modifier::BOLD));
         frame.render_widget(err_para, chunks[1]);
     }
 
     // Hint
-    let hint = Paragraph::new("輸入股票代碼  Enter: 確認  Esc: 取消")
-        .style(Style::new().fg(theme.fg))
-        .alignment(Alignment::Center);
+    let hint = Paragraph::new("輸入股票代碼  Enter 確認  Esc 取消").style(hint_style(theme));
     frame.render_widget(hint, chunks[3]);
 }
 
 fn draw_add_group_popup(frame: &mut Frame, area: Rect, theme: &ThemeColors, name: &str) {
-    let block = Block::default()
-        .title(" 新增分組 ")
-        .title_style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_style(Style::new().fg(theme.selected))
-        .style(Style::new().bg(theme.bg).fg(theme.fg));
+    let block = popup_block("新增分組".into(), theme.selected, theme);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
         .split(inner);
 
-    let name_text = format!("  分組名稱: {}", name);
+    let name_text = format!("► 名稱  {}", name);
     let name_para = Paragraph::new(name_text)
         .style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD));
     frame.render_widget(name_para, chunks[0]);
 
-    let hint = Paragraph::new("Enter: 確認  Esc: 取消")
-        .style(Style::new().fg(theme.fg))
-        .alignment(Alignment::Center);
-    frame.render_widget(hint, chunks[1]);
+    let hint = Paragraph::new("Enter 確認  Esc 取消").style(hint_style(theme));
+    frame.render_widget(hint, chunks[2]);
 }
 
 fn draw_edit_stock_popup(
@@ -461,12 +420,7 @@ fn draw_edit_stock_popup(
     name: &str,
     field: usize,
 ) {
-    let block = Block::default()
-        .title(format!(" 編輯股票 [{}] ", group))
-        .title_style(Style::new().fg(theme.selected).add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_style(Style::new().fg(theme.selected))
-        .style(Style::new().bg(theme.bg).fg(theme.fg));
+    let block = popup_block(format!("編輯股票 {}", group), theme.selected, theme);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -483,9 +437,9 @@ fn draw_edit_stock_popup(
 
     // Code input
     let code_label = if field == 0 {
-        "► 代碼: "
+        "► 代碼  "
     } else {
-        "  代碼: "
+        "  代碼  "
     };
     let code_text = format!("{}{}", code_label, code);
     let code_style = if field == 0 {
@@ -498,9 +452,9 @@ fn draw_edit_stock_popup(
 
     // Name input
     let name_label = if field == 1 {
-        "► 名稱: "
+        "► 名稱  "
     } else {
-        "  名稱: "
+        "  名稱  "
     };
     let name_text = format!("{}{}", name_label, name);
     let name_style = if field == 1 {
@@ -512,19 +466,13 @@ fn draw_edit_stock_popup(
     frame.render_widget(name_para, chunks[1]);
 
     // Hint
-    let hint = Paragraph::new("Tab/Shift+Tab: 切換欄位  Enter: 確認  Esc: 取消")
-        .style(Style::new().fg(theme.fg))
-        .alignment(Alignment::Center);
+    let hint =
+        Paragraph::new("Tab/Shift+Tab 切換欄位  Enter 確認  Esc 取消").style(hint_style(theme));
     frame.render_widget(hint, chunks[3]);
 }
 
 fn draw_delete_confirm_popup(frame: &mut Frame, area: Rect, theme: &ThemeColors, name: &str) {
-    let block = Block::default()
-        .title(" 確認刪除 ")
-        .title_style(Style::new().fg(theme.up).add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_style(Style::new().fg(theme.up))
-        .style(Style::new().bg(theme.bg).fg(theme.fg));
+    let block = popup_block("確認刪除".into(), theme.up, theme);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -534,19 +482,72 @@ fn draw_delete_confirm_popup(frame: &mut Frame, area: Rect, theme: &ThemeColors,
         .constraints([
             Constraint::Length(1),
             Constraint::Length(1),
+            Constraint::Length(1),
             Constraint::Min(0),
         ])
         .split(inner);
 
-    let msg = Paragraph::new(format!("  確定要刪除 \"{}\" 嗎？", name))
-        .style(Style::new().fg(theme.fg))
-        .alignment(Alignment::Center);
+    let msg = Paragraph::new(format!("確定要刪除「{}」嗎？", name))
+        .style(Style::new().fg(theme.fg).add_modifier(Modifier::BOLD));
     frame.render_widget(msg, chunks[0]);
 
-    let hint = Paragraph::new("  y: 確認刪除  n/Esc: 取消")
-        .style(Style::new().fg(theme.up).add_modifier(Modifier::BOLD))
-        .alignment(Alignment::Center);
-    frame.render_widget(hint, chunks[1]);
+    let hint = Paragraph::new(Line::from(vec![
+        Span::styled("y ", Style::new().fg(theme.up).add_modifier(Modifier::BOLD)),
+        Span::styled("確認刪除  ", hint_style(theme)),
+        Span::styled(
+            "n/Esc ",
+            Style::new().fg(theme.fg).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("取消", hint_style(theme)),
+    ]));
+    frame.render_widget(hint, chunks[2]);
+}
+
+fn draw_help_popup(frame: &mut Frame, area: Rect, theme: &ThemeColors) {
+    let block = popup_block("快捷鍵".into(), theme.selected, theme);
+
+    let section = Style::new().fg(theme.fg).add_modifier(Modifier::BOLD);
+    let key = Style::new().fg(theme.selected).add_modifier(Modifier::BOLD);
+
+    let sections: [(&str, &[(&str, &str)]); 3] = [
+        ("導航", &[("←/→ Tab", "切換分組"), ("↑/↓", "選取股票")]),
+        (
+            "操作",
+            &[
+                ("a", "在目前分組新增股票"),
+                ("A", "新增分組"),
+                ("e", "編輯選取的股票"),
+                ("d", "刪除選取的股票(空分組則刪除分組)"),
+            ],
+        ),
+        (
+            "系統",
+            &[
+                ("r", "立即重抓報價"),
+                ("t", "切換色彩主題"),
+                ("h", "開啟／關閉說明"),
+                ("q/Esc", "離開"),
+            ],
+        ),
+    ];
+
+    let mut lines = Vec::new();
+    for (i, (title, items)) in sections.iter().enumerate() {
+        if i > 0 {
+            lines.push(Line::default());
+        }
+        lines.push(Line::from(Span::styled(*title, section)));
+        for (k, desc) in items.iter() {
+            lines.push(Line::from(vec![
+                Span::styled(format!("  {:<10}", k), key),
+                Span::styled(*desc, Style::new().fg(theme.fg)),
+            ]));
+        }
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled("h/Esc 關閉", hint_style(theme))));
+
+    frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
