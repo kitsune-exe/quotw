@@ -4,7 +4,6 @@ mod config;
 mod model;
 mod ui;
 
-use crate::config::Config;
 use color_eyre::Result;
 use config::load_or_build;
 use ratatui::init;
@@ -16,7 +15,7 @@ async fn main() -> Result<()> {
     let (config, theme, cli) = load_or_build()?;
 
     if cli.once {
-        return run_once(&config, cli.codes).await;
+        return run_once(cli.codes).await;
     }
 
     let mut terminal = init();
@@ -26,7 +25,7 @@ async fn main() -> Result<()> {
     result
 }
 
-async fn run_once(_config: &Config, codes: Vec<String>) -> Result<()> {
+async fn run_once(codes: Vec<String>) -> Result<()> {
     use crate::api::{fetch_index, fetch_quotes};
     use crate::config::load_portfolio;
 

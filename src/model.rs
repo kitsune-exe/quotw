@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Quote {
     pub code: String,
     pub name: String,
@@ -9,7 +8,6 @@ pub struct Quote {
     pub change: f64,
     pub pct: f64,
     pub volume: u64,
-    pub time: String,
     pub prev_close: f64,
     pub high: f64,
     pub low: f64,
@@ -26,7 +24,6 @@ impl Quote {
             change: 0.0,
             pct: 0.0,
             volume: 0,
-            time: "--:--:--".into(),
             prev_close: f64::NAN,
             high: f64::NAN,
             low: f64::NAN,
@@ -176,8 +173,6 @@ pub enum PopupState {
     AddStock {
         group: String,
         code: String,
-        name: String,
-        field: usize,
         error: Option<String>,
     },
     AddGroup {
@@ -206,7 +201,6 @@ pub enum DeleteType {
 pub struct AppState {
     pub groups: Vec<GroupView>,
     pub current_tab: usize,
-    pub theme_name: String,
     pub last_update: DateTime<Local>,
     pub loading: bool,
     pub popup: PopupState,
@@ -215,11 +209,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(groups: Vec<GroupView>, theme_name: String) -> Self {
+    pub fn new(groups: Vec<GroupView>) -> Self {
         Self {
             groups,
             current_tab: 0,
-            theme_name,
             last_update: Local::now(),
             loading: false,
             popup: PopupState::None,

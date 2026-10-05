@@ -354,13 +354,7 @@ fn draw_popup(frame: &mut Frame, area: Rect, state: &AppState, theme: &ThemeColo
     frame.render_widget(Clear, popup_area);
 
     match &state.popup {
-        PopupState::AddStock {
-            group,
-            code,
-            name: _,
-            field: _,
-            error,
-        } => {
+        PopupState::AddStock { group, code, error } => {
             draw_add_stock_popup(frame, popup_area, theme, group, code, error);
         }
         PopupState::AddGroup { name } => {
