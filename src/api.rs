@@ -28,8 +28,6 @@ struct TwseQuote {
     #[serde(default)]
     v: String, // volume
     #[serde(default)]
-    t: String, // time
-    #[serde(default)]
     y: String, // yesterday close
     #[serde(default)]
     h: String, // high
@@ -122,7 +120,6 @@ async fn fetch_from_market(
                 change,
                 pct,
                 volume,
-                time: q.t.clone(),
                 prev_close,
                 high,
                 low,
@@ -186,21 +183,10 @@ pub async fn fetch_quotes(codes: &[String]) -> Result<Vec<Quote>, ApiError> {
 pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
     let client = Client::new();
     // TWSE index code is typically "0000" or "t00"
-    let codes = ["t00".to_string()];
-
-    let ex_ch = codes
-        .iter()
-        .map(|c| format!("tse_{}.tw", c))
-        .collect::<Vec<_>>()
-        .join("|");
-
-    let url = format!(
-        "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch={}",
-        ex_ch
-    );
+    let url = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw";
 
     let resp = client
-        .get(&url)
+        .get(url)
         .header("User-Agent", "Mozilla/5.0 (compatible; quotw)")
         .header("Referer", "https://mis.twse.com.tw/")
         .send()
@@ -230,11 +216,6 @@ pub async fn fetch_index() -> Result<IndexQuote, ApiError> {
             pct,
         })
     } else {
-        Ok(IndexQuote {
-            name: "加權指數".to_string(),
-            price: f64::NAN,
-            change: 0.0,
-            pct: 0.0,
-        })
+        Ok(IndexQuote::empty())
     }
 }

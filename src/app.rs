@@ -23,7 +23,7 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     let quotes = fetch_initial_quotes(&watchlist).await?;
     let index = fetch_index().await.unwrap_or_else(|_| IndexQuote::empty());
     let groups = build_groups(&watchlist, quotes, &portfolio);
-    let mut state = AppState::new(groups, config.theme.clone());
+    let mut state = AppState::new(groups);
     state.index_quote = index;
 
     let mut current_theme = theme;
@@ -49,11 +49,6 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
     // Skip the first immediate tick
     tick_interval.tick().await;
 
-    // Helper to refresh quotes using the portfolio watchlist
-    let refresh_quotes = async |watchlist: &[WatchItem]| -> Result<Vec<Quote>> {
-        fetch_initial_quotes(watchlist).await
-    };
-
     loop {
         terminal.draw(|frame| draw(frame, &state, &current_theme))?;
 
@@ -76,7 +71,7 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                                 state.loading = true;
                                 terminal.draw(|frame| draw(frame, &state, &current_theme))?;
                                 let watchlist = build_watchlist_from_portfolio(&portfolio);
-                                if let Ok(quotes) = refresh_quotes(&watchlist).await {
+                                if let Ok(quotes) = fetch_initial_quotes(&watchlist).await {
                                     let groups = build_groups(&watchlist, quotes, &portfolio);
                                     state.groups = groups;
                                     state.last_update = chrono::Local::now();
@@ -89,7 +84,6 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                             KeyCode::Char('t') => {
                                 theme_idx = (theme_idx + 1) % theme_names.len();
                                 current_theme = ThemeColors::from_name(theme_names[theme_idx]);
-                                state.theme_name = theme_names[theme_idx].into();
                                 let mut new_config = config.clone();
                                 new_config.theme = theme_names[theme_idx].into();
                                 let _ = save_config(&new_config);
@@ -100,8 +94,6 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                                     state.popup = PopupState::AddStock {
                                         group: group.group.clone(),
                                         code: String::new(),
-                                        name: String::new(),
-                                        field: 0,
                                         error: None,
                                     };
                                 }
@@ -157,7 +149,7 @@ pub async fn run(terminal: &mut DefaultTerminal, config: Config, theme: ThemeCol
                 state.loading = true;
                 terminal.draw(|frame| draw(frame, &state, &current_theme))?;
                 let watchlist = build_watchlist_from_portfolio(&portfolio);
-                if let Ok(quotes) = refresh_quotes(&watchlist).await {
+                if let Ok(quotes) = fetch_initial_quotes(&watchlist).await {
                     let groups = build_groups(&watchlist, quotes, &portfolio);
                     state.groups = groups;
                     state.clamp_selected_index();
@@ -185,8 +177,6 @@ async fn handle_popup_input(
             PopupState::AddStock {
                 group: _,
                 code: _,
-                name: _,
-                field: _,
                 error: _,
             },
             KeyCode::Esc,
@@ -197,8 +187,6 @@ async fn handle_popup_input(
             PopupState::AddStock {
                 group: _,
                 code,
-                name: _,
-                field: _,
                 error: _,
             },
             KeyCode::Char(c),
@@ -211,24 +199,13 @@ async fn handle_popup_input(
             PopupState::AddStock {
                 group: _,
                 code,
-                name: _,
-                field: _,
                 error: _,
             },
             KeyCode::Backspace,
         ) => {
             code.pop();
         }
-        (
-            PopupState::AddStock {
-                group,
-                code,
-                name: _,
-                field: _,
-                error,
-            },
-            KeyCode::Enter,
-        ) => {
+        (PopupState::AddStock { group, code, error }, KeyCode::Enter) => {
             if !code.is_empty() {
                 // Clear previous error
                 *error = None;
@@ -449,7 +426,7 @@ fn build_groups(
         let quote = quote_map
             .get(&item.code)
             .cloned()
-            .unwrap_or_else(|| Quote::empty(&item.code, &item.name));
+            .unwrap_or_else(|| Quote::empty(&item.code, &item.code));
 
         group_items
             .entry(item.group.clone())
@@ -482,7 +459,6 @@ fn build_watchlist_from_portfolio(portfolio: &Portfolio) -> Vec<WatchItem> {
         for code in &group.code {
             watchlist.push(WatchItem {
                 code: code.clone(),
-                name: code.clone(), // Name will be updated from API response
                 group: group.group_name.clone(),
             });
         }
