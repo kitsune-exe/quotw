@@ -10,7 +10,7 @@
 
 - 以分組(分頁)管理自選股，可在TUI內新增、編輯、刪除股票及分組，變更會寫回`portfolio.json`。
 - 定期自動更新報價，也可手動立即重抓。
-- 內建三種色彩主題(catppuccin_mocha、monokai_classic、tokyo_night)，切換後會記憶至`config.json`。
+- 內建四種色彩主題(catppuccin_mocha、monokai_classic、tokyo_night、swiss)，切換後會記憶至`config.json`。
 - 單次報價模式(`--once`)，不進入TUI，直接將報價輸出至終端機。
 
 ## 專案技術棧

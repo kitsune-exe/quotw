@@ -46,8 +46,7 @@ pub struct ThemeColors {
     pub selected: Color,
     pub up: Color,
     pub down: Color,
-    pub header_fg: Color,
-    pub header_bg: Color,
+    pub limit_fg: Color,
 }
 
 impl ThemeColors {
@@ -59,8 +58,7 @@ impl ThemeColors {
             selected: Color::Rgb(249, 226, 175),
             up: Color::Rgb(243, 139, 168),
             down: Color::Rgb(166, 227, 161),
-            header_fg: Color::Rgb(30, 30, 46),
-            header_bg: Color::Rgb(137, 180, 250),
+            limit_fg: Color::White,
         }
     }
 
@@ -72,8 +70,7 @@ impl ThemeColors {
             selected: Color::Rgb(230, 219, 116),
             up: Color::Rgb(249, 38, 114),
             down: Color::Rgb(166, 226, 46),
-            header_fg: Color::Rgb(39, 40, 34),
-            header_bg: Color::Rgb(102, 217, 239),
+            limit_fg: Color::White,
         }
     }
 
@@ -85,8 +82,19 @@ impl ThemeColors {
             selected: Color::Rgb(224, 175, 104),
             up: Color::Rgb(247, 118, 142),
             down: Color::Rgb(158, 206, 106),
-            header_fg: Color::Rgb(26, 27, 38),
-            header_bg: Color::Rgb(122, 162, 247),
+            limit_fg: Color::White,
+        }
+    }
+
+    pub fn swiss() -> Self {
+        Self {
+            fg: Color::Rgb(20, 20, 20),
+            bg: Color::Rgb(244, 242, 236),
+            border: Color::Rgb(150, 150, 146),
+            selected: Color::Rgb(20, 20, 20),
+            up: Color::Rgb(176, 48, 40),
+            down: Color::Rgb(46, 112, 70),
+            limit_fg: Color::Rgb(244, 242, 236),
         }
     }
 
@@ -95,6 +103,7 @@ impl ThemeColors {
             "catppuccin_mocha" => Self::catppuccin_mocha(),
             "monokai_classic" => Self::monokai_classic(),
             "tokyo_night" => Self::tokyo_night(),
+            "swiss" => Self::swiss(),
             _ => Self::catppuccin_mocha(),
         }
     }
